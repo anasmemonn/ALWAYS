@@ -3,11 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/png" href="pin.png">
   <title>1% Better Everyday</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    
     * {
       margin: 0;
       padding: 0;
@@ -697,7 +695,7 @@
         <div class="progress" id="yearProgress"></div>
       </div>
       <div class="days-completed" id="daysCounter">
-        <span>Day 1</span>
+        <span>Day 0</span>
         <span>365 Days</span>
       </div>
     </div>
@@ -757,6 +755,12 @@
       coldModeStreak = parseInt(localStorage.getItem('coldModeStreak'));
     }
     
+    // Load completed days
+    let completedDays = [];
+    if (localStorage.getItem('completedDays')) {
+      completedDays = JSON.parse(localStorage.getItem('completedDays'));
+    }
+    
     // Quotes collection
     const quotes = [
       { text: "Your time is limited, don't waste it living someone else's life.", author: "Steve Jobs" },
@@ -814,15 +818,7 @@
     }
     
     function calculateProgress() {
-      const today = new Date();
-      const start = new Date(localStorage.getItem('startDate'));
-      
-      // Calculate difference in days
-      const diffTime = Math.abs(today - start);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-      
-      // Cap at 365 days
-      const daysPassed = Math.min(diffDays, TOTAL_DAYS);
+      const daysPassed = completedDays.length;
       const percentage = (daysPassed / TOTAL_DAYS) * 100;
       
       yearProgress.style.width = `${percentage}%`;
@@ -1193,8 +1189,23 @@
       currentDate.setDate(startDate.getDate() + currentOffset);
       
       if (saveData(currentDate, false)) {
+        // Add day to completed days if not already added
+        const dateKey = getDateKey(currentDate);
+        if (!completedDays.includes(dateKey)) {
+          completedDays.push(dateKey);
+          localStorage.setItem('completedDays', JSON.stringify(completedDays));
+        }
+        
         showNotification("Daily data saved successfully!");
-        updateStreak();
+        
+        // Only update streak if we're saving today's data
+        const today = new Date();
+        if (currentDate.toDateString() === today.toDateString()) {
+          updateStreak();
+        }
+        
+        // Update progress after saving
+        calculateProgress();
       }
     }
     
@@ -1213,8 +1224,15 @@
       currentDate.setDate(startDate.getDate() + currentOffset);
       const key = `daily_${getDateKey(currentDate)}`;
       localStorage.removeItem(key);
+      
+      // Remove from completed days
+      const dateKey = getDateKey(currentDate);
+      completedDays = completedDays.filter(d => d !== dateKey);
+      localStorage.setItem('completedDays', JSON.stringify(completedDays));
+      
       showNotification("Today's data has been reset!");
       renderPage();
+      calculateProgress();
     }
     
     function restart365Journey() {
@@ -1239,8 +1257,13 @@
         }
       }
       
+      // Reset completed days
+      completedDays = [];
+      localStorage.setItem('completedDays', JSON.stringify(completedDays));
+      
       showNotification("365-day journey restarted from today!");
       renderPage();
+      calculateProgress();
     }
     
     function resetAllData() {
@@ -1253,14 +1276,17 @@
       currentOffset = 0;
       localStorage.setItem('currentOffset', currentOffset);
       coldModeStreak = 0;
+      completedDays = [];
       
       showNotification("All data has been completely reset!");
       renderPage();
+      calculateProgress();
     }
     
     // Initialize the app
     document.addEventListener('DOMContentLoaded', () => {
       renderPage();
+      calculateProgress();
       
       // Reset functionality
       resetBtn.addEventListener('click', () => {
@@ -1276,6 +1302,4 @@
     });
   </script>
 </body>
-
 </html>
-
